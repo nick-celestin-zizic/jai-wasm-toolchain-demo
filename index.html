@@ -166,7 +166,7 @@ I compiled a bunch of the example programs included with Jai to run on the web b
                         <a href="examples/Simp/" target="_blank">
                             <img src="examples/Simp/data/thumbnail.png" alt="Simp" class="thumbnail"/>
                         </a>
-                        <p>Simp is the simple rendering API provided with the standard Jai modules, but now on the web!</p>
+                        <p>Simp is the simple graphics API provided with the Jai modules, but now on the web! It uses WebGL as the rendering backend.</p>
                     </div>
                 </div>
                 <div class="example">
@@ -175,7 +175,7 @@ I compiled a bunch of the example programs included with Jai to run on the web b
                         <a href="examples/Multiple Windows/" target="_blank">
                             <img src="examples/Multiple Windows/data/thumbnail.png" alt="Multiple Windows" class="thumbnail"/>
                         </a>
-                        <p>Some applications may need to open multiple windos, so we make this work on the browser as well. Just make sure to position your windows precisely where you want them</p>
+                        <p>Some applications may need to open multiple windows, so we make this work on the browser as well. Just make sure to position your windows precisely where you want them when calling create_window, because not specifying a window's position makes it occupy the full page and forwards page resizes to that window.</p>
                     </div>
                 </div>
                 <div class="example">
@@ -202,7 +202,7 @@ I compiled a bunch of the example programs included with Jai to run on the web b
                         <a href="examples/Sound_Player/" target="_blank">
                             <img src="examples/Sound_Player/data/thumbnail.png" alt="Sound_Player" class="thumbnail"/>
                         </a>
-                        <p>Sound_Player is an example of a module that we have to remap completely since it is very too low level and reliant on threads to be extended to work on the web like the Input module. Luckily remap_import allows us to use WebAudio as we write a jai wrapper that exposes the same interface as the original module.</p>
+                        <p>Sound_Player is an example of a module that we have to remap completely since it is too low level and reliant on threads to be extended to work on the web like the Input module. Luckily remap_import allows us to use WebAudio as long as we write a jai wrapper that exposes the same interface as the original module.</p>
                     </div>
                 </div>
                 <div class="example">
