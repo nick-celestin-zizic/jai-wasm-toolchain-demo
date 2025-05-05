@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jai WASM Toolchain Demo</title>
+</head>
+<body>
+<style>
+/* http://meyerweb.com/eric/tools/css/reset/ 
+   v2.0 | 20110126
+   License: none (public domain)
+*/
+
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed, 
+figure, figcaption, footer, header, hgroup, 
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	font-size: 100%;
+	font: inherit;
+	vertical-align: baseline;
+}
+/* HTML5 display-role reset for older browsers */
+article, aside, details, figcaption, figure, 
+footer, header, hgroup, menu, nav, section {
+	display: block;
+}
+body {
+	line-height: 1;
+}
+ol, ul {
+	list-style: none;
+}
+blockquote, q {
+	quotes: none;
+}
+blockquote:before, blockquote:after,
+q:before, q:after {
+	content: '';
+	content: none;
+}
+table {
+	border-collapse: collapse;
+	border-spacing: 0;
+}
+body {
+    background: #333;
+    color: #F0F0F0;
+    font-family: Georgia;
+    margin: auto;
+    max-width: 80%;
+    font-size: 20px;
+}
+p {
+    padding-bottom: 20px;
+    line-height: 1.5;
+}
+h1 {
+    font-size: 40px;
+    text-align: center;
+    padding-top: 40px;
+    padding-bottom: 40px;
+}
+h2 {
+    font-size: 28px;
+    text-align: left;
+    padding-top: 40px;
+    padding-bottom: 20px;
+}
+h2 a {
+    color: #F0F0F0;
+}
+kbd {
+    display: inline-block;
+    font-family: monospace;
+    padding: 3px 5px;
+    background: #303030;
+    line-height: 10px;
+    vertical-align: middle;
+    text-align: center;
+    border-radius: 5px;
+}
+code {
+    display: inline-block;
+    font-family: monospace;
+}
+ul {
+    padding-bottom: 20px;
+    list-style: inside square;
+}
+ul li {
+    padding-bottom: 10px;
+}
+.plot {
+    width: 100%;
+    padding-bottom: 20px;
+}
+a {
+    color: #9090EE;
+    text-decoration: none;
+}
+.author {
+    text-align: center;
+    padding-bottom: 40px;
+    font-style: italic;
+}
+.author a {
+    color: #F0F0F0;
+}
+
+.content {
+    display: flex;
+    flex-wrap: wrap; /* Allow items to wrap to the next line */
+    justify-content: space-between; /* Space out the items evenly */
+}
+
+.example {
+    width: calc(50% - 20px); /* Each example takes up half the width minus some margin */
+    margin-bottom: 40px; /* Space between rows */
+    box-sizing: border-box; /* Include padding and border in the element's total width */
+}
+
+.image-paragraph {
+    display: flex;
+    align-items: flex-start;
+    width: 100%;
+}
+
+.image-paragraph a {
+    display: block; /* Make the anchor a block element */
+    width: 50%; /* Set the anchor to take up half the width */
+}
+
+.thumbnail {
+    width: 100%; /* Make the image fill the anchor */
+    height: auto; /* Maintain aspect ratio */
+}
+
+.image-paragraph p {
+    flex: 1; /* Allow the paragraph to take the remaining space */
+    margin: 0; /* Remove default margin */
+    padding-left: 10px; /* Optional: Add some padding for spacing */
+}
+
+</style>
+<h1>Jai WASM Toolchain Demo</h1>
+<p>
+I compiled a bunch of the example programs included with Jai to run on the web browser! I think it's pretty neat! TODO: do the full writeup!
+</p>
+<div class='content'>                <div class="example">
+                    <h2><a href="examples/Simp/" target="_blank">Simp</a></h2>
+                    <div class="image-paragraph">
+                        <a href="examples/Simp/" target="_blank">
+                            <img src="examples/Simp/data/thumbnail.png" alt="Simp" class="thumbnail"/>
+                        </a>
+                        <p>Simp is the simple rendering API provided with the standard Jai modules, but now on the web!</p>
+                    </div>
+                </div>
+                <div class="example">
+                    <h2><a href="examples/Multiple Windows/" target="_blank">Multiple Windows</a></h2>
+                    <div class="image-paragraph">
+                        <a href="examples/Multiple Windows/" target="_blank">
+                            <img src="examples/Multiple Windows/data/thumbnail.png" alt="Multiple Windows" class="thumbnail"/>
+                        </a>
+                        <p>Some applications may need to open multiple windos, so we try to make this work on the browser as well.</p>
+                    </div>
+                </div>
+                <div class="example">
+                    <h2><a href="examples/Skeletal Animation/" target="_blank">Skeletal Animation</a></h2>
+                    <div class="image-paragraph">
+                        <a href="examples/Skeletal Animation/" target="_blank">
+                            <img src="examples/Skeletal Animation/data/thumbnail.png" alt="Skeletal Animation" class="thumbnail"/>
+                        </a>
+                        <p>This is a classic example that uses OpenGL and a very particular coding style to animate a 3D model.</p>
+                    </div>
+                </div>
+                <div class="example">
+                    <h2><a href="examples/GetRect/" target="_blank">GetRect</a></h2>
+                    <div class="image-paragraph">
+                        <a href="examples/GetRect/" target="_blank">
+                            <img src="examples/GetRect/data/thumbnail.png" alt="GetRect" class="thumbnail"/>
+                        </a>
+                        <p>GetRect is Jai's immediate mode GUI library, it includes a bunch of useful widgets and is much saner than HTML.</p>
+                    </div>
+                </div>
+                <div class="example">
+                    <h2><a href="examples/Invaders/" target="_blank">Invaders</a></h2>
+                    <div class="image-paragraph">
+                        <a href="examples/Invaders/" target="_blank">
+                            <img src="examples/Invaders/data/thumbnail.png" alt="Invaders" class="thumbnail"/>
+                        </a>
+                        <p>A game by Jonathan Blow made to showcase various language features.</p>
+                    </div>
+                </div>
+</div></body>
+</html>
