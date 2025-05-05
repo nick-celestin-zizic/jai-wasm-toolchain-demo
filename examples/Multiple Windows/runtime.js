@@ -384,123 +384,14 @@ function write_to_console_log(str, to_standard_error) {
 
         console_buffer = "";
     }
-}// One important thing to note about working with event listeners with this webassembly stuff:
-// DO NOT CALL exported_wasm_functions from eventListeners! If an even listener is firing that means
-// that the wasm execution is suspended and calling procedures does NOTHING. I'm sure there is a way to
-// have a runtime check for this with another proxy object and checking the state of the yield_jmp_buf
-// so that a nice error could be thrown, but I really do not want to do that so just be careful ok!
-// -nzizic, 2 May 2025
+}const time_origin = Date.now();
+exported_js_functions.wasm_get_microseconds = () => { return BigInt((Number(time_origin) + Number(performance.now())) * 1000); };
 
-
-
-
-// keyboard
-
-let key_inputs = [];
-
-const jai_keycode_from_js_event = (event) => {
-    switch (event.key) {
-    case "ArrowUp":    return 128;
-    case "ArrowDown":  return 129;
-    case "ArrowLeft":  return 130;
-    case "ArrowRight": return 131;
-    
-    case "Alt":     return 139;
-    case "Control": return 140;
-    case "Shift":   return 141;
-    }
-    
-    if (event.keyCode >=  0 && event.keyCode <= 90) return event.keyCode;
-    
-    console.log(event);
-    throw new Error(`TODO convert js event.keyCode ${event.keyCode} to the jai equivalent`);
+exported_js_functions.wasm_sleep_milliseconds = (ms) => {
+    if (setjmp_and_suspend(yield_jmp_buf) === 0)
+        setTimeout(() => { longjmp(yield_jmp_buf, 1); }, ms);
 };
-
-document.addEventListener("keydown", (event) => {
-    key_inputs.push({
-        code: jai_keycode_from_js_event(event),
-        down: true,
-    });
-});
-
-document.addEventListener("keyup", (event) => {
-    key_inputs.push({
-        code: jai_keycode_from_js_event(event),
-        down: false,
-    });
-});
-
-
-
-// mouse
-
-let mouse_position_x = 0;
-let mouse_position_y = 0;
-document.addEventListener("mousemove", (event) => {
-    mouse_position_x = event.clientX;
-    mouse_position_y = event.clientY;
-});
-
-document.addEventListener("pointerdown", (event) => {
-    let code;
-    if (event.button === 0) code = 168;
-    else if (event.button === 1) code = 169;
-    else if (event.button === 2) code = 170;
-    else throw `TODO: mouse button ${event.button} is not suppported!`;
-    key_inputs.push({
-        code: code,
-        down: true,
-    });
-});
-
-document.addEventListener("pointerup", (event) => {
-    let code;
-    if (event.button === 0) code = 168;
-    else if (event.button === 1) code = 169;
-    else if (event.button === 2) code = 170;
-    else throw `TODO: mouse button ${event.button} is not suppported!`;
-    key_inputs.push({
-        code: code,
-        down: false,
-    });
-});
-
-// window resize
-const window_resizes = [];
-const fullscreen_canvas_resize_listener = (window_id, canvas) => () => {
-    canvas.width  = window.innerWidth;
-    canvas.height = window.innerHeight;
-    window_resizes.push({
-        id: window_id,
-        w: window.innerWidth, 
-        h: window.innerHeight,
-    });
-};
-
-// update 
-let mouse_position_x_last_frame = 0;
-let mouse_position_y_last_frame = 0;
-exported_js_functions.wasm_update_window_events = () => {
-    exported_wasm_functions.reset_events_this_frame(jai_context);
-    
-    const mouse_delta_x = mouse_position_x - mouse_position_x_last_frame;
-    const mouse_delta_y = mouse_position_y - mouse_position_y_last_frame;
-    mouse_position_x_last_frame = mouse_position_x;
-    mouse_position_y_last_frame = mouse_position_y;
-    
-    exported_wasm_functions.set_mouse_delta(mouse_delta_x, mouse_delta_y, 0);
-    for (let i = 0; i < key_inputs.length; i++) {
-        const it = key_inputs[i];
-        exported_wasm_functions.add_key_event(jai_context, it.code, it.down);
-    }
-    key_inputs.length = 0;
-    
-    for (let i = 0; i < window_resizes.length; i++) {
-        const it = window_resizes[i];
-        exported_wasm_functions.add_window_resize(jai_context, it.id, it.w, it.h);
-    }
-    window_resizes.length = 0;
-};const canvases = [];
+const canvases = [];
 const get_canvas = (window) => {
     const canvas = canvases[window];
     if (!canvas) throw `Window id ${window} is not valid`;
@@ -619,7 +510,123 @@ exported_js_functions.wasm_get_dimensions = (window, right_handed, x_ptr, y_ptr,
     view.setInt32(Number(width_ptr), canvas.width, true);  // Write width
     view.setInt32(Number(height_ptr), canvas.height, true); // Write height
 };
-// when you call file_open, we call fetch but do not wait for it to complete, read_entire_file then blocks until all of the data is ready
+// One important thing to note about working with event listeners with this webassembly stuff:
+// DO NOT CALL exported_wasm_functions from eventListeners! If an even listener is firing that means
+// that the wasm execution is suspended and calling procedures does NOTHING. I'm sure there is a way to
+// have a runtime check for this with another proxy object and checking the state of the yield_jmp_buf
+// so that a nice error could be thrown, but I really do not want to do that so just be careful ok!
+// -nzizic, 2 May 2025
+
+
+
+
+// keyboard
+
+let key_inputs = [];
+
+const jai_keycode_from_js_event = (event) => {
+    switch (event.key) {
+    case "ArrowUp":    return 128;
+    case "ArrowDown":  return 129;
+    case "ArrowLeft":  return 130;
+    case "ArrowRight": return 131;
+    
+    case "Alt":     return 139;
+    case "Control": return 140;
+    case "Shift":   return 141;
+    }
+    
+    if (event.keyCode >=  0 && event.keyCode <= 90) return event.keyCode;
+    
+    console.log(event);
+    throw new Error(`TODO convert js event.keyCode ${event.keyCode} to the jai equivalent`);
+};
+
+document.addEventListener("keydown", (event) => {
+    key_inputs.push({
+        code: jai_keycode_from_js_event(event),
+        down: true,
+    });
+});
+
+document.addEventListener("keyup", (event) => {
+    key_inputs.push({
+        code: jai_keycode_from_js_event(event),
+        down: false,
+    });
+});
+
+
+
+// mouse
+
+let mouse_position_x = 0;
+let mouse_position_y = 0;
+document.addEventListener("mousemove", (event) => {
+    mouse_position_x = event.clientX;
+    mouse_position_y = event.clientY;
+});
+
+document.addEventListener("pointerdown", (event) => {
+    let code;
+    if (event.button === 0) code = 168;
+    else if (event.button === 1) code = 169;
+    else if (event.button === 2) code = 170;
+    else throw `TODO: mouse button ${event.button} is not suppported!`;
+    key_inputs.push({
+        code: code,
+        down: true,
+    });
+});
+
+document.addEventListener("pointerup", (event) => {
+    let code;
+    if (event.button === 0) code = 168;
+    else if (event.button === 1) code = 169;
+    else if (event.button === 2) code = 170;
+    else throw `TODO: mouse button ${event.button} is not suppported!`;
+    key_inputs.push({
+        code: code,
+        down: false,
+    });
+});
+
+// window resize
+const window_resizes = [];
+const fullscreen_canvas_resize_listener = (window_id, canvas) => () => {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    window_resizes.push({
+        id: window_id,
+        w: window.innerWidth, 
+        h: window.innerHeight,
+    });
+};
+
+// update 
+let mouse_position_x_last_frame = 0;
+let mouse_position_y_last_frame = 0;
+exported_js_functions.wasm_update_window_events = () => {
+    exported_wasm_functions.reset_events_this_frame(jai_context);
+    
+    const mouse_delta_x = mouse_position_x - mouse_position_x_last_frame;
+    const mouse_delta_y = mouse_position_y - mouse_position_y_last_frame;
+    mouse_position_x_last_frame = mouse_position_x;
+    mouse_position_y_last_frame = mouse_position_y;
+    
+    exported_wasm_functions.set_mouse_delta(mouse_delta_x, mouse_delta_y, 0);
+    for (let i = 0; i < key_inputs.length; i++) {
+        const it = key_inputs[i];
+        exported_wasm_functions.add_key_event(jai_context, it.code, it.down);
+    }
+    key_inputs.length = 0;
+    
+    for (let i = 0; i < window_resizes.length; i++) {
+        const it = window_resizes[i];
+        exported_wasm_functions.add_window_resize(jai_context, it.id, it.w, it.h);
+    }
+    window_resizes.length = 0;
+};// when you call file_open, we call fetch but do not wait for it to complete, read_entire_file then blocks until all of the data is ready
 const files = [];
 const file_open = (promise) => {
     for (let i = 0; i < files.length; i++) {
@@ -666,13 +673,6 @@ exported_js_functions.wasm_read_entire_file = (file, zero_terminated, out_conten
         view.setBigInt64(Number(out_content) + 8, mem, true);
         view.setInt32(Number(out_success), 1, true);
     }
-};
-const time_origin = Date.now();
-exported_js_functions.wasm_get_microseconds = () => { return BigInt((Number(time_origin) + Number(performance.now())) * 1000); };
-
-exported_js_functions.wasm_sleep_milliseconds = (ms) => {
-    if (setjmp_and_suspend(yield_jmp_buf) === 0)
-        setTimeout(() => { longjmp(yield_jmp_buf, 1); }, ms);
 };
 let front_canvas = undefined;
 const back_canvas = new OffscreenCanvas(0, 0);

@@ -62,7 +62,7 @@ body {
     font-family: Georgia;
     margin: auto;
     max-width: 80%;
-    font-size: 20px;
+    font-size: 16px;
 }
 p {
     padding-bottom: 20px;
@@ -175,16 +175,16 @@ I compiled a bunch of the example programs included with Jai to run on the web b
                         <a href="examples/Multiple Windows/" target="_blank">
                             <img src="examples/Multiple Windows/data/thumbnail.png" alt="Multiple Windows" class="thumbnail"/>
                         </a>
-                        <p>Some applications may need to open multiple windos, so we try to make this work on the browser as well.</p>
+                        <p>Some applications may need to open multiple windos, so we make this work on the browser as well. Just make sure to position your windows precisely where you want them</p>
                     </div>
                 </div>
                 <div class="example">
-                    <h2><a href="examples/Skeletal Animation/" target="_blank">Skeletal Animation</a></h2>
+                    <h2><a href="examples/Input/" target="_blank">Input</a></h2>
                     <div class="image-paragraph">
-                        <a href="examples/Skeletal Animation/" target="_blank">
-                            <img src="examples/Skeletal Animation/data/thumbnail.png" alt="Skeletal Animation" class="thumbnail"/>
+                        <a href="examples/Input/" target="_blank">
+                            <img src="examples/Input/data/thumbnail.png" alt="Input" class="thumbnail"/>
                         </a>
-                        <p>This is a classic example that uses OpenGL and a very particular coding style to animate a 3D model.</p>
+                        <p>In addition to being able to open windows, the language comes with a module for handling user input.</p>
                     </div>
                 </div>
                 <div class="example">
@@ -194,6 +194,24 @@ I compiled a bunch of the example programs included with Jai to run on the web b
                             <img src="examples/GetRect/data/thumbnail.png" alt="GetRect" class="thumbnail"/>
                         </a>
                         <p>GetRect is Jai's immediate mode GUI library, it includes a bunch of useful widgets and is much saner than HTML.</p>
+                    </div>
+                </div>
+                <div class="example">
+                    <h2><a href="examples/Sound_Player/" target="_blank">Sound_Player</a></h2>
+                    <div class="image-paragraph">
+                        <a href="examples/Sound_Player/" target="_blank">
+                            <img src="examples/Sound_Player/data/thumbnail.png" alt="Sound_Player" class="thumbnail"/>
+                        </a>
+                        <p>Sound_Player is an example of a module that we have to remap completely since it is very too low level and reliant on threads to be extended to work on the web like the Input module. Luckily remap_import allows us to use WebAudio as we write a jai wrapper that exposes the same interface as the original module.</p>
+                    </div>
+                </div>
+                <div class="example">
+                    <h2><a href="examples/Skeletal Animation/" target="_blank">Skeletal Animation</a></h2>
+                    <div class="image-paragraph">
+                        <a href="examples/Skeletal Animation/" target="_blank">
+                            <img src="examples/Skeletal Animation/data/thumbnail.png" alt="Skeletal Animation" class="thumbnail"/>
+                        </a>
+                        <p>This is a classic example that uses OpenGL and a very particular coding style to animate a 3D model.</p>
                     </div>
                 </div>
                 <div class="example">
