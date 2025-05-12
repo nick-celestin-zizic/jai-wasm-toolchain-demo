@@ -77,7 +77,7 @@ h1 {
 h2 {
     font-size: 28px;
     text-align: left;
-    padding-top: 40px;
+    padding-top: 20px;
     padding-bottom: 20px;
 }
 h2 a {
@@ -123,36 +123,50 @@ a {
 
 .content {
     display: flex;
-    flex-wrap: wrap; /* Allow items to wrap to the next line */
-    justify-content: space-between; /* Space out the items evenly */
+    flex-wrap: wrap;
+    justify-content: space-between;
 }
 
 .example {
-    width: calc(50% - 20px); /* Each example takes up half the width minus some margin */
-    margin-bottom: 40px; /* Space between rows */
-    box-sizing: border-box; /* Include padding and border in the element's total width */
+    background: #222;
+    width: calc(50% - 20px);
+    margin-bottom: 40px;
+    box-sizing: border-box;
 }
 
 .image-paragraph {
     display: flex;
     align-items: flex-start;
     width: 100%;
+    padding: 20px;
+    box-sizing: border-box;
 }
 
 .image-paragraph a {
-    display: block; /* Make the anchor a block element */
-    width: 50%; /* Set the anchor to take up half the width */
+    display: block;
+    width: 50%;
 }
 
 .thumbnail {
-    width: 100%; /* Make the image fill the anchor */
-    height: auto; /* Maintain aspect ratio */
+    width: 100%;
+    height: auto;
 }
 
 .image-paragraph p {
-    flex: 1; /* Allow the paragraph to take the remaining space */
-    margin: 0; /* Remove default margin */
-    padding-left: 10px; /* Optional: Add some padding for spacing */
+    flex: 1;
+    margin: 0;
+    padding-left: 10px;
+    
+}
+
+@media (max-width: 768px) {
+    .example {
+        width: 100%;
+    }
+}
+
+.example h2 {
+    text-align: center;
 }
 
 </style>
@@ -220,7 +234,7 @@ I compiled a bunch of the example programs included with Jai to run on the web b
                         <a href="examples/Invaders/" target="_blank">
                             <img src="examples/Invaders/data/thumbnail.png" alt="Invaders" class="thumbnail"/>
                         </a>
-                        <p>A game by Jonathan Blow made to showcase various language features.</p>
+                        <p>A game by Jonathan Blow made to showcase various language features. I added a feature since I am bad at the game; killing 100 invaders gives you an extra life!</p>
                     </div>
                 </div>
 </div></body>
