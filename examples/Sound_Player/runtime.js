@@ -331,35 +331,15 @@ exported_js_functions.wasm_create_window = (width, height, name_ptr, window_x, w
     const color_b = view.getFloat32(offset + 8, true);
     
     
-    const scale   = window.devicePixelRatio;
     const canvas  = document.createElement('canvas');
     canvas.id     = name;
-    canvas.width  = Math.floor(Number(width));
-    canvas.height = Math.floor(Number(height));
-    // canvas.style.width  = `${Math.floor(canvas.width / scale)}px`;
-    // canvas.style.height = `${Math.floor(canvas.height / scale)}px`;
+    canvas.width  = Math.floor(0.5 + Number(width));
+    canvas.height = Math.floor(0.5 + Number(height));
     canvas.style.backgroundColor = `rgba(${color_r * 255}, ${color_g * 255}, ${color_b * 255}, 1)`;
-    canvas.style.position = 'absolute';
-    
-    let transform_x;
-    if (window_x === -1n) {
-        canvas.style.left = '50%';
-        transform_x = '-50%';
-    } else {
-        canvas.style.left = `${window_x}px`;
-        transform_x = '0%'
-    }
-    
-    let transform_y;
-    if (window_y === -1n) {
-        canvas.style.top = '50%';
-        transform_y = '-50%';
-    } else {
-        canvas.style.top = `${window_y}px`;
-        transform_y = '0%';
-    }
-    
-    canvas.style.transform = `translate(${transform_x}, ${transform_y})`;
+    canvas.style.position = "absolute";
+    canvas.style.margin   = "0";
+    canvas.style.left     = `${(window_x === -1n) ? 0 : window_x}px`;
+    canvas.style.top      = `${(window_y === -1n) ? 0 : window_y}px`;
     
     if (parent !== -1n) throw new Error("TODO: What does that even mean in this context?");
     
@@ -389,16 +369,18 @@ exported_js_functions.wasm_create_window = (width, height, name_ptr, window_x, w
     // -nzizic, 2 May 2025
     
     if (window_x === -1n && window_y === -1n) {
+        canvas.style.width  = "100%";
+        canvas.style.height = "100%";
         if (fullscreen_canvas_resize_listener !== undefined) {
             const listen = fullscreen_canvas_resize_listener(window_id);
             window.addEventListener("resize", listen);
             listen();
         } else {
-            canvas.style.width  = `${window.innerWidth}px`;
-            canvas.style.height = `${window.innerHeight}px`;
-            const scale   = window.devicePixelRatio;
-            canvas.width  = Math.floor(window.innerWidth * scale);
-            canvas.height = Math.floor(window.innerHeight * scale);
+            const scale   = Math.ceil(window.devicePixelRatio);
+            canvas.width  = window.innerWidth  * scale;
+            canvas.height = window.innerHeight * scale;
+            // canvas.style.width  = `${window.innerWidth}px`;
+            // canvas.style.height = `${window.innerHeight}px`;
         }
     }
     
@@ -409,7 +391,7 @@ exported_js_functions.wasm_get_mouse_pointer_position = (window_id, right_handed
     const canvas = get_canvas(window_id);
     const rect = canvas.getBoundingClientRect();
     
-    const scale = window.devicePixelRatio;
+    const scale = Math.ceil(window.devicePixelRatio);
     const x = BigInt(Math.floor(scale * (0.5 + mouse_position_x - rect.left)));
     const y = (right_handed !== 0)
         ? BigInt(Math.floor(scale * (0.5 + rect.bottom - (window.innerHeight * (mouse_position_y / window.innerHeight)))))
@@ -500,7 +482,7 @@ document.addEventListener("keyup", (event) => {
 let mouse_position_x = 0;
 let mouse_position_y = 0;
 document.addEventListener("mousemove", (event) => {
-    const scale = window.devicePixelRatio;
+    const scale = Math.ceil(window.devicePixelRatio);
     mouse_position_x = event.clientX;
     mouse_position_y = event.clientY;
 });
@@ -529,23 +511,17 @@ document.addEventListener("pointerup", (event) => {
     });
 });
 
-// takes in "css pixels" and resizes the canvas with in a way that maintains pixel density
-const resize_canvas = (canvas, width, height) => {
-    // Set display size (css pixels).
-    canvas.style.width  = `${width}px`;
-    canvas.style.height = `${height}px`;
-    
-    // Set actual size in memory (scaled to account for extra pixel density).
-    const scale   = window.devicePixelRatio;
-    canvas.width  = Math.floor(width * scale);
-    canvas.height = Math.floor(height * scale);
-};
-
 // window resize
 const window_resizes = [];
 const fullscreen_canvas_resize_listener = (window_id) => () => {
-    const canvas = canvases[window_id];
-    resize_canvas(canvas, window.innerWidth, window.innerHeight);
+    const canvas  = get_canvas(window_id);
+    const scale   = Math.ceil(window.devicePixelRatio);
+    canvas.width  = window.innerWidth  * scale;
+    canvas.height = window.innerHeight * scale;
+    canvas.style.width  = `${window.innerWidth}px`;
+    canvas.style.height = `${window.innerHeight}px`;
+    // canvas.getContext("2d").setTransform(scale, 0, 0, scale, 0, 0);
+    // console.log("pixel ratio is ", scale);
     window_resizes.push({
         id: window_id,
         w: canvas.width,
@@ -900,8 +876,8 @@ const gl_id2obj = (handle) => {
 };
 
 
-exported_js_functions.wasm_gl_set_render_target = (window) => {
-    front_canvas = get_canvas(window);
+exported_js_functions.wasm_gl_set_render_target = (window_id) => {
+    front_canvas = get_canvas(window_id);
     back_canvas.width  = front_canvas.width;
     back_canvas.height = front_canvas.height;
 };
@@ -913,14 +889,6 @@ exported_js_functions.wasm_webgl_swap_buffers = (window, vsync) => {
         front_canvas.getContext("2d").drawImage(back_canvas, 0, 0, front_canvas.width, front_canvas.height);
         wasm_resume(1);
     });
-    
-    // if (setjmp_and_suspend(yield_jmp_buf) === 0) {
-    //     requestAnimationFrame(() => {
-    //         exported_js_functions.wasm_gl_set_render_target(window);
-    //         front_canvas.getContext("2d").drawImage(back_canvas, 0, 0, front_canvas.width, front_canvas.height);
-    //         longjmp(yield_jmp_buf, 1);
-    //     });
-    // }
 };
 
 exported_js_functions.glViewport = (x, y, width, height) => { gl.viewport(x, y, width, height); };
