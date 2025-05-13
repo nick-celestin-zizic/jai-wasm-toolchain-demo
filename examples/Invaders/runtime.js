@@ -413,6 +413,79 @@ const fullscreen_canvas_resize_listener = (window_id) => () => {
     });
 };
 
+// touch
+const last_touches = [];
+const touches = [];
+exported_js_functions.wasm_device_supports_touch_input = () => { return 'ontouchstart' in document.documentElement; };
+document.addEventListener("touchstart", (event) => {
+    if (allocated !== undefined) event.preventDefault();
+    
+    last_touches.length = 0;
+    last_touches.push(...event.targetTouches);
+    const scale = Math.ceil(window.devicePixelRatio);
+    for (let it_index = 0; it_index < event.targetTouches.length; it_index++) {
+        const it = event.targetTouches[it_index];
+        touches.push({
+            id: it.identifier,
+            touch_type: 1,
+            x: it.pageX * scale,
+            y: it.pageY * scale,
+        });
+    }
+}, { passive: false });
+document.addEventListener("touchmove", (event) => {
+    if (allocated !== undefined) event.preventDefault();
+    last_touches.length = 0;
+    last_touches.push(...event.targetTouches);
+    const scale = Math.ceil(window.devicePixelRatio);
+    for (let it_index = 0; it_index < event.targetTouches.length; it_index++) {
+        const it = event.targetTouches[it_index];
+        touches.push({
+            id: it.identifier,
+            touch_type: 0,
+            x: it.pageX * scale,
+            y: it.pageY * scale,
+        });
+    }
+}, { passive: false });
+document.addEventListener("touchend", (event) => {
+    if (allocated !== undefined) event.preventDefault();
+    const scale = Math.ceil(window.devicePixelRatio);
+    
+    const stupid = new Set(event.targetTouches);
+    console.log(stupid);
+    
+    for (let last_touch_index = 0; last_touch_index < last_touches.length; last_touch_index++) {
+        const last_touch = last_touches[last_touch_index];
+        if (!stupid.has(last_touch.identifier)) touches.push({
+            id: last_touch.identifier,
+            touch_type: 2,
+            x: last_touch.pageX * scale,
+            y: last_touch.pageY * scale,
+        });
+    }
+    last_touches.length = 0;
+}, { passive: false });
+document.addEventListener("touchcancel", (event) => {
+    if (allocated !== undefined) event.preventDefault();
+    const scale = Math.ceil(window.devicePixelRatio);
+    
+    const stupid = new Set(event.targetTouches);
+    console.log(stupid);
+    
+    for (let last_touch_index = 0; last_touch_index < last_touches.length; last_touch_index++) {
+        const last_touch = last_touches[last_touch_index];
+        if (!stupid.has(last_touch.identifier)) touches.push({
+            id: last_touch.identifier,
+            touch_type: 2,
+            x: last_touch.pageX * scale,
+            y: last_touch.pageY * scale,
+        });
+    }
+    last_touches.length = 0;
+}, { passive: false });
+
+
 // update 
 let mouse_position_x_last_frame = 0;
 let mouse_position_y_last_frame = 0;
@@ -437,6 +510,12 @@ exported_js_functions.wasm_update_window_events = () => {
         exported_wasm_functions.add_window_resize(jai_context, it.id, it.w, it.h);
     }
     window_resizes.length = 0;
+    
+    for (let i = 0; i < touches.length; i++) {
+        const it = touches[i];
+        exported_wasm_functions.add_touch(jai_context, it.id, it.touch_type, it.x, it.y);
+    }
+    touches.length = 0;
 };
 
 
