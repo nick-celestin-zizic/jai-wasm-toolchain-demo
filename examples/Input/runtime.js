@@ -327,6 +327,7 @@ const jmp_buf_init = (jmp_buf, view) => {
 
 let key_inputs = [];
 
+// TODO: when I added text input i fucked up the key input i think i will have to just send extra events or something?
 const jai_keycode_from_js_event = (event) => {
     switch (event.key) {
     case "ArrowUp":    return 128;
@@ -435,8 +436,6 @@ document.addEventListener("touchstart", (event) => {
 }, { passive: false });
 document.addEventListener("touchmove", (event) => {
     if (allocated !== undefined) event.preventDefault();
-    last_touches.length = 0;
-    last_touches.push(...event.targetTouches);
     const scale = Math.ceil(window.devicePixelRatio);
     for (let it_index = 0; it_index < event.targetTouches.length; it_index++) {
         const it = event.targetTouches[it_index];
@@ -448,41 +447,42 @@ document.addEventListener("touchmove", (event) => {
         });
     }
 }, { passive: false });
+
 document.addEventListener("touchend", (event) => {
     if (allocated !== undefined) event.preventDefault();
     const scale = Math.ceil(window.devicePixelRatio);
     
-    const stupid = new Set(event.targetTouches);
-    console.log(stupid);
-    
-    for (let last_touch_index = 0; last_touch_index < last_touches.length; last_touch_index++) {
+    const held_touches = new Set(Array.from(event.targetTouches).map(x => x.identifier));
+    for (let last_touch_index = last_touches.length - 1; last_touch_index >= 0; last_touch_index--) {
         const last_touch = last_touches[last_touch_index];
-        if (!stupid.has(last_touch.identifier)) touches.push({
-            id: last_touch.identifier,
-            touch_type: 2,
-            x: last_touch.pageX * scale,
-            y: last_touch.pageY * scale,
-        });
+        if (!held_touches.has(last_touch.identifier)) {
+            touches.push({
+                id: last_touch.identifier,
+                touch_type: 2,
+                x: last_touch.pageX * scale,
+                y: last_touch.pageY * scale,
+            });
+            last_touches.splice(last_touch_index, 1);
+        }
     }
-    last_touches.length = 0;
 }, { passive: false });
 document.addEventListener("touchcancel", (event) => {
     if (allocated !== undefined) event.preventDefault();
     const scale = Math.ceil(window.devicePixelRatio);
     
-    const stupid = new Set(event.targetTouches);
-    console.log(stupid);
-    
-    for (let last_touch_index = 0; last_touch_index < last_touches.length; last_touch_index++) {
+    const held_touches = new Set(Array.from(event.targetTouches).map(x => x.identifier));
+    for (let last_touch_index = last_touches.length - 1; last_touch_index >= 0; last_touch_index--) {
         const last_touch = last_touches[last_touch_index];
-        if (!stupid.has(last_touch.identifier)) touches.push({
-            id: last_touch.identifier,
-            touch_type: 2,
-            x: last_touch.pageX * scale,
-            y: last_touch.pageY * scale,
-        });
+        if (!held_touches.has(last_touch.identifier)) {
+            touches.push({
+                id: last_touch.identifier,
+                touch_type: 2,
+                x: last_touch.pageX * scale,
+                y: last_touch.pageY * scale,
+            });
+            last_touches.splice(last_touch_index, 1);
+        }
     }
-    last_touches.length = 0;
 }, { passive: false });
 
 
