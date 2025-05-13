@@ -759,10 +759,11 @@ const create_fullscreen_canvas = (text) => {
     });
 };
 
+load_wasm();
 
 // in order to play any sound, the user needs to interact with the window, so we have to install this event listener
-window.addEventListener("click", start_wasm_listner);
-create_fullscreen_canvas("Click to Start.");
+// window.addEventListener("click", start_wasm_listner);
+// create_fullscreen_canvas("Click to Start.");
 
 
 

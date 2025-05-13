@@ -653,19 +653,25 @@ exported_js_functions.wasm_sleep_milliseconds = (ms) => { if (wasm_pause() === 0
      
 */
 
-const sounds  = {}; // JS.string -> JS.URL
-const streams = {}; // Jai.*Sound_Stream -> JS.Audio
+const sounds  = {}; // JS.string -> JS.AudioBuffer
+const streams = {}; // Jai.*Sound_Stream -> JS.AudioBufferSourceNode
 
 exported_js_functions.webaudio_load_audio_file = (path_pointer, optional, out_sound_data) => {
-    // if (setjmp_and_suspend(yield_jmp_buf) === 0) (async () => {
-    if (wasm_pause() === 0) (async () => {
-        const path     = js_string_from_jai_string_pointer(path_pointer);
-        const response = await fetch(path);
-        const data     = await response.blob();
-        sounds[path]   = URL.createObjectURL(data);
-        wasm_resume(1);
-        // longjmp(yield_jmp_buf, 1);
-    })(); else {
+    switch (wasm_pause()) {
+    case 0: (async () => {
+        const path = js_string_from_jai_string_pointer(path_pointer);
+        try {
+            const response = await fetch(path);                               console.log(response);
+            const buffer   = await response.arrayBuffer();                    console.log(buffer);
+            const audio    = await audio_context.decodeAudioData(buffer);     console.log(audio);
+            sounds[path] = audio;
+            wasm_resume(1);
+        } catch (e) {
+            console.error(`Could not load audio from ${path}`, e);
+            wasm_resume(2);
+        }
+    })(); break;
+    case 1: {
         const view     = new DataView(allocated.buffer);
         const count    = view.getBigInt64(Number(path_pointer) + 0, true); // path_pointer.count
         const old_data = view.getBigInt64(Number(path_pointer) + 8, true); // path_pointer.data
@@ -679,6 +685,12 @@ exported_js_functions.webaudio_load_audio_file = (path_pointer, optional, out_so
         view.setBigInt64(base + 0, count, true);    // result.path.count = path_pointer.count
         view.setBigInt64(base + 8, new_data, true); // result.path.data  = new_data;
         view.setInt8(base + 16, 1, true);           // result.loaded = true;
+    } break;
+    case 2: {
+        new DataView(allocated.buffer).setInt8(
+            Number(out_sound_data) + 16, 1, true
+        ); // result.loaded = false;
+    } break;
     }
 };
 
@@ -702,15 +714,17 @@ exported_js_functions.webaudio_update = (dt) => {
     streams_to_free.length = 0;  
 };
 
-exported_js_functions.webaudio_make_audio = (stream, _name) => {
+exported_js_functions.webaudio_make_audio_buffer_source_node = (stream, _name) => {
     const name  = js_string_from_jai_string_pointer(_name);
     const sound = sounds[name];
     if (name === undefined) throw new Error(`Sound ${name} does not exist!`);
     
-    const audio = new Audio();
-    audio.src = sound;
-    streams[stream] = audio;
-    audio.addEventListener("ended", non_repeating_sound_stream_listener(stream));
+    const source  = audio_context.createBufferSource();
+    source.buffer = sounds[name];
+    source.loop   = false;
+    source.connect(audio_context.destination);
+    source.addEventListener("ended", non_repeating_sound_stream_listener(stream));
+    streams[stream] = source;
 };
 
 exported_js_functions.webaudio_sound_player_init = (config) => {
@@ -720,28 +734,29 @@ exported_js_functions.webaudio_sound_player_init = (config) => {
 
 exported_js_functions.webaudio_sound_player_shutdown = () => {
     for (const [sound_stream, audio] of Object.entries(streams)) {
-        audio.pause();
+        audio.stop();
         jai_free(jai_context, sound_stream);
         delete streams[sound_stream];
     }
 };
 
+const audio_context = new AudioContext();
 exported_js_functions.webaudio_start_playing = (stream) => {
     const audio = streams[stream];
     if (audio === undefined) throw new Error(`Stream at address 0x${stream.toString(16)} was not created with make_stream()!`);
-    audio.play();
+    audio.start();
 };
 
 exported_js_functions.webaudio_set_repeating = (stream, repeating) => {
-    const audio = streams[stream];
-    if (audio === undefined) throw new Error(`Sound_Stream at address 0x${stream.toString(16)} was not created by WebAudio!`);
+    const source = streams[stream];
+    if (source === undefined) throw new Error(`Sound_Stream at address 0x${stream.toString(16)} was not created by WebAudio!`);
     
     if (repeating === 0) {
-        audio.addEventListener("ended", non_repeating_sound_stream_listener(stream));
-        audio.loop = false;
+        source.addEventListener("ended", non_repeating_sound_stream_listener(stream));
+        source.loop = false;
     } else if (repeating === 1) {
-        audio.removeEventListener("ended", non_repeating_sound_stream_listener(stream));
-        audio.loop = true;
+        source.removeEventListener("ended", non_repeating_sound_stream_listener(stream));
+        source.loop = true;
     } else {
         throw new Error("[webaudio_set_repeating] unreachable");
     }
@@ -860,10 +875,11 @@ const create_fullscreen_canvas = (text) => {
     });
 };
 
+load_wasm();
 
 // in order to play any sound, the user needs to interact with the window, so we have to install this event listener
-window.addEventListener("click", start_wasm_listner);
-create_fullscreen_canvas("Click to Start.");
+// window.addEventListener("click", start_wasm_listner);
+// create_fullscreen_canvas("Click to Start.");
 
 
 
