@@ -126,6 +126,25 @@ const write_to_console_log = (str, to_standard_error) => {
 
 // TODO: maybe all entrypoint funky stuff should be in runtime.jai?
 
+const wasm_pause = () => {
+    const value = exported_js_functions.wasm_setjmp(yield_jmp_buf);
+    const view  = new DataView(allocated.buffer);
+    const buf   = Number(yield_jmp_buf);
+    const state = view.getInt32(buf + JMP_BUF_OFFSET_STATE, true);
+    switch (state) {
+    case JMP_BUF_STATE_CAPTURING : view.setInt32(buf + JMP_BUF_OFFSET_STATE, JMP_BUF_STATE_PAUSING,     true); break;
+    case JMP_BUF_STATE_CAPTURED  : view.setInt32(buf + JMP_BUF_OFFSET_STATE, JMP_BUF_STATE_INITIALIZED, true); break;
+    }
+    return value;
+};
+
+const wasm_resume = (value) => {
+    exported_js_functions.wasm_longjmp(yield_jmp_buf, value);
+    active_jmp_buf = 0n;
+    start_rewind(yield_jmp_buf);
+    entry_point();
+};
+
 let active_jmp_buf = 0n;
 
 exported_js_functions.wasm_setjmp = (jmp_buf) => {
@@ -184,25 +203,6 @@ exported_js_functions.wasm_longjmp = (jmp_buf, value) => {
     active_jmp_buf = jmp_buf;
 };
 
-const wasm_pause = () => {
-    const value = exported_js_functions.wasm_setjmp(yield_jmp_buf);
-    const view  = new DataView(allocated.buffer);
-    const buf   = Number(yield_jmp_buf);
-    const state = view.getInt32(buf + JMP_BUF_OFFSET_STATE, true);
-    switch (state) {
-    case JMP_BUF_STATE_CAPTURING : view.setInt32(buf + JMP_BUF_OFFSET_STATE, JMP_BUF_STATE_PAUSING,     true); break;
-    case JMP_BUF_STATE_CAPTURED  : view.setInt32(buf + JMP_BUF_OFFSET_STATE, JMP_BUF_STATE_INITIALIZED, true); break;
-    }
-    return value;
-};
-
-const wasm_resume = (value) => {
-    exported_js_functions.wasm_longjmp(yield_jmp_buf, value);
-    active_jmp_buf = 0n;
-    start_rewind(yield_jmp_buf);
-    entry_point();
-};
-
 const entry_point = () => {
     while (true) {
         jai_main(jai_context);
@@ -225,7 +225,6 @@ const entry_point = () => {
         case JMP_BUF_STATE_PAUSING: {
             active_jmp_buf = 0n;
         } return; // do not rewind and re-enter main
-        
         case JMP_BUF_STATE_CAPTURING: {
             view.setBigInt64(
                 buf + JMP_BUF_OFFSET_UNWOUND,
@@ -233,7 +232,6 @@ const entry_point = () => {
                 true
             );
         } break;
-        
         case JMP_BUF_STATE_CAPTURED:
         case JMP_BUF_STATE_RETURNING: {
             view.setBigInt64(
@@ -242,13 +240,11 @@ const entry_point = () => {
                 true
             );
         } break;
-        
         default: {
             jmp_buf_log_header(active_jmp_buf);
             throw Error(`unreachable jmp_buf state ${state}`);
         }
         }
-        
         start_rewind(active_jmp_buf);
     }
 };
@@ -818,7 +814,12 @@ const create_fullscreen_canvas = (text) => {
     });
 };
 
-load_wasm();
+let pwa_manifest;
+window.onload = async () => {
+    pwa_manifest   = await (await fetch(document.querySelector('link[rel="manifest"]').href)).json();
+    document.title = pwa_manifest.name;
+    load_wasm();
+};
 
 // in order to play any sound, the user needs to interact with the window, so we have to install this event listener
 // window.addEventListener("click", start_wasm_listner);
