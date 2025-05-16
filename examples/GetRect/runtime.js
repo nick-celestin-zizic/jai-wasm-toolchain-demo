@@ -757,7 +757,15 @@ const create_fullscreen_canvas = (text) => {
 
 let pwa_manifest;
 window.onload = async () => {
-    pwa_manifest   = await (await fetch(document.querySelector('link[rel="manifest"]').href)).json();
+    // const old_registrations = await navigator.serviceWorker.getRegistrations();
+    // for (let registration of old_registrations) registration.unregister();
+    // const registration = await navigator.serviceWorker.register("./worker.js");
+    
+    // removing caching files while debugging
+    // await (await navigator.storage.getDirectory()).remove({ recursive: true });
+    
+    const response = await fetch(document.querySelector('link[rel="manifest"]').href);
+    pwa_manifest   = await response.json();
     document.title = pwa_manifest.name;
     load_wasm();
 };
@@ -775,57 +783,149 @@ window.onload = async () => {
      
 */
 
-// when you call file_open, we call fetch but do not wait for it to complete, read_entire_file then blocks until all of the data is ready
-const files = [];
-const file_open = (promise) => {
-    for (let i = 0; i < files.length; i++) {
-        if (files[i] === undefined) {
-            files[i] = promise;
-            return i;
-        }
-    }
-    files.push(promise);
-    return files.length - 1;
-};
-const file_close = (index) => { files[index] = undefined; };
+// TODO: explain what OPFS is and how it maps to the File module
 
-exported_js_functions.wasm_file_open = (_name, for_writing, keep_existing_content, log_errors, out_file, out_success) => {
-    const name = js_string_from_jai_string_pointer(_name); 
-    // console.log(`file_open(${[name, for_writing, keep_existing_content, log_errors]}) -> (${[out_file, out_success]})`);
-    if (for_writing !== 0) throw "TODO: don't fetch if we are not reading?";
+// When you try to open a file that does not exist in the OPFS we will call fetch
+// will the same path and if we get something back we will store it so that next time
+// you don't go out to the network.
+
+
+
+const create_file_and_folders = async (full_path) => {
+    let  folder = await navigator.storage.getDirectory();
+    const parts = full_path.split('/').filter(part => part);
     
-    const index = file_open(fetch(name).then((resp) => resp.arrayBuffer()));
-    const view  = new DataView(allocated.buffer);
-    view.setInt32(Number(out_file), index, true);
-    view.setInt32(Number(out_success), 1, true);
+    for (let it_index = 0; it_index < parts.length-1; it_index++) {
+        const it = parts[it_index];
+        let next_handle;
+        try { next_handle = await folder.getDirectoryHandle(it); }
+        catch (e) { next_handle = await folder.getDirectoryHandle(it, { create: true }); }
+        folder = next_handle;
+    }
+    
+    const file_name = parts[parts.length-1];
+    return await folder.getFileHandle(file_name, { create: true });
 };
 
-exported_js_functions.wasm_file_close = (file) => {
-    // console.log(`file_close(${file})`);
-};
+const find_file = async (full_path) => {
+    let  folder = await navigator.storage.getDirectory();
+    const parts = full_path.split('/').filter(part => part);
+    
+    for (let it_index = 0; it_index < parts.length-1; it_index++) {
+        const it = parts[it_index];
+        let next_handle;
+        next_handle = await folder.getDirectoryHandle(it);
+        folder = next_handle;
+    }
+    
+    const file_name = parts[parts.length-1];
+    return await folder.getFileHandle(file_name);
+}
 
-// TODO: don't start the read in file_open and just report an error on file_write
-exported_js_functions.wasm_read_entire_file = (file, zero_terminated, out_content, out_success) => {
-    if (wasm_pause() === 0) {
-        // TODO: .catch(...) with wasm_resume(2) to propogate the error properly
-        files[file].then((buffer) => {
-            files[file] = new Uint8Array(buffer);
-            wasm_resume(1);
-        });
-    } else {
-        const src = files[file];
-        const mem = jai_alloc(jai_context, BigInt(src.length + ((zero_terminated !== 0) ? 1 : 0)));
-        const dst = new Uint8Array(allocated.buffer, Number(mem), src.length);
-        dst.set(src);
-        if (zero_terminated) dst[dst.byteLength] = 0;
+const file_handles = [];
+exported_js_functions.wasm_file_open = (_name, for_writing, keep_existing_content, log_errors, out_file, out_success) => {
+    // we prepend the current document location to the path so that if you have multiple applications
+    // on the same site, each one will have it's own "home folder" that acts as the filesystem root.
+    // It should still be possible to access other application's files if they are being served by the same origin,
+    // which is pretty neat if you ask me. -nzizic, 16 May, 2025
+    const fetch_name = js_string_from_jai_string_pointer(_name);
+    const name = document.location.pathname + fetch_name;
+    const value = wasm_pause(); // 0 => paused, 1 => resumed with error, 2+ => returned with file_index+2
+    if (value === 0) (async () => {
+        let file_handle;
+        try {
+            file_handle = await find_file(name);
+            // console.log(name, "file already exists in opfs!");
+        } catch (e) {
+            // console.log(name, "Could not find in filesystem, gonna try to fetch");
+            try {
+                const resp   = await fetch(fetch_name);
+                const buffer = await resp.arrayBuffer();
+                file_handle  = await create_file_and_folders(name);
+                const writer = await file_handle.createWritable();
+                await writer.write(buffer);
+                await writer.close();
+            } catch (e) {
+                // console.log(name, "could not fetch file!", e);
+                if (for_writing === 1 && keep_existing_content === 0) {
+                    // console.log(name, "could not fetch the file, creating one instead!");
+                    throw new Error("TODO: create the file");
+                } else {
+                    throw new Error("TODO: file not found. propogate the error...");
+                    wasm_resume(1);
+                    return;
+                }
+            }
+        }
         
+        let file_index = -1;
+        for (let i = 0; i < file_handles.length; i++) if (file_handles[i] === undefined) {
+            file_index = i;
+            break;
+        }
+        if (file_index === -1) {
+            file_index = file_handles.length;
+            file_handles.length += 1;
+        }
+        
+        file_handles[file_index] = file_handle;
+        wasm_resume(file_index+2);
+    })(); else if (value === 1) {
+        throw new Error("TODO: handle error and whatnot");
+    } else {
+        const file_index = value-2;
         const view = new DataView(allocated.buffer);
-        view.setBigInt64(Number(out_content) + 0, BigInt(src.length), true);
-        view.setBigInt64(Number(out_content) + 8, mem, true);
+        view.setInt32(Number(out_file), file_index, true);
         view.setInt32(Number(out_success), 1, true);
     }
-};
+}
 
+exported_js_functions.wasm_file_close = (file_index_pointer) => {
+    const view = new DataView(allocated.buffer);
+    const file_index = view.getInt32(Number(file_index_pointer), true);
+    file_handles[file_index] = undefined;
+    view.setInt32(Number(file_index_pointer), -1, true);
+}
+
+const read_entire_file_buffers = [];
+exported_js_functions.wasm_read_entire_file = (file_index, zero_terminated, out_content, out_success) => {
+    const file_handle = file_handles[file_index]
+    if (file_handle === undefined) throw new Error(`File handle ${file_index} was not created with file_open or was closed!`);
+    
+    const value = wasm_pause(); // 0 => paused, 1 => returned with error, 2+ => returned with file buffer index+2
+    if (value === 0) (async () => {
+        const file   = await file_handle.getFile();
+        const buffer = await file.arrayBuffer();
+        
+        let index = -1;
+        for (let i = 0; i < read_entire_file_buffers.length; i++) if (read_entire_file_buffers[i] === undefined) {
+            index = i;
+            break;
+        }
+        if (index === -1) {
+            index = read_entire_file_buffers.length;
+            read_entire_file_buffers.length += 1;
+        }
+        
+        read_entire_file_buffers[index] = new Uint8Array(buffer);
+        wasm_resume(index+2);
+    })(); else if (value === 1) {
+        throw new Error("TODO: report error wasm_read_entire_file");
+    } else {
+        const index  = value-2;
+        const source = read_entire_file_buffers[index];
+        const memory = jai_alloc(jai_context, BigInt(source.length + ((zero_terminated !== 0) ? 1 : 0)));
+        const array  = new Uint8Array(allocated.buffer, Number(memory), source.length)
+        array.set(source);
+        if (zero_terminated) array[array.byteLength-1] = 0;
+        read_entire_file_buffers[index] = undefined;
+        
+        const view = new DataView(allocated.buffer);
+        view.setBigInt64(Number(out_content) + 0, BigInt(source.length), true);
+        view.setBigInt64(Number(out_content) + 8, memory, true);
+        view.setInt32(Number(out_success), 1, true);
+    }
+}
 
 
 /*
