@@ -1,4 +1,4 @@
-const CACHE_NAME = "Cache - Invaders";
+const CACHE_NAME = "Cache - GetRect";
 const PATHS_TO_CACHE = [ "", "index.html", "icon.png" , "main.wasm", "manifest.json", "runtime.js", ];
 
 self.addEventListener("fetch", (event) => {

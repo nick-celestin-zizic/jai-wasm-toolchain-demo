@@ -757,12 +757,33 @@ const create_fullscreen_canvas = (text) => {
 
 let pwa_manifest;
 window.onload = async () => {
-    // const old_registrations = await navigator.serviceWorker.getRegistrations();
-    // for (let registration of old_registrations) registration.unregister();
-    // const registration = await navigator.serviceWorker.register("./worker.js");
-    
-    // removing caching files while debugging
+    // uncomment this if you are debugging File.js and want to disable file caching
     // await (await navigator.storage.getDirectory()).remove({ recursive: true });
+    
+    
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    // console.log(registrations);
+    if (registrations.length === 0) {
+        // console.log("no service worker registered, registering now...");
+        const registration = await navigator.serviceWorker.register("./worker.js");
+        // console.log(registration);
+    } else {
+        let registration;
+        for (let it_index = 0; it_index < registrations.length; it_index++) {
+            const it = registrations[it_index];
+            if (it.scope === document.location.href) {
+                // console.log("Found worker for this page", it);
+                registration = await navigator.serviceWorker.register("./worker.js");
+                break;
+            }
+        }
+        if (registration === undefined) {
+            // console.log("no service worker registered to this page, registering now...");
+            const registration = await navigator.serviceWorker.register("./worker.js");
+            // console.log(registration);
+        }
+    }
+    
     
     const response = await fetch(document.querySelector('link[rel="manifest"]').href);
     pwa_manifest   = await response.json();
