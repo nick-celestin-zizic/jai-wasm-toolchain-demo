@@ -216,7 +216,7 @@ I compiled a bunch of the example programs included with Jai to run on the web b
                         <a href="examples/Sound_Player/" target="_blank">
                             <img src="examples/Sound_Player/data/thumbnail.png" alt="Sound_Player" class="thumbnail"/>
                         </a>
-                        <p>Sound_Player is an example of a module that we have to remap completely since it is too low level and reliant on threads to be extended to work on the web like the Input module. Luckily remap_import allows us to use WebAudio as long as we write a jai wrapper that exposes the same interface as the original module.</p>
+                        <p>Sound_Player is an example of a module that we have to remap completely since it is too low level and reliant on threads to be extended to work on the web like the Input module. Luckily remap_import allows us to use WebAudio as long as we write a jai wrapper that exposes the same interface as the original module. One thing that sucks though is that file format support in WebAudio is very lackluster and inconsistent across browsers..... So this example only works in Firefox due to Chrome choking on the ogg files.</p>
                     </div>
                 </div>
                 <div class="example">
